@@ -22,6 +22,7 @@ RUN go mod download
 COPY main.go main.go
 COPY api/ api/
 COPY controllers/ controllers/
+COPY metrics/ metrics/
 
 # Build
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o manager main.go
@@ -33,5 +34,7 @@ COPY LICENSE /licenses/LICENSE
 WORKDIR /
 COPY --from=builder /workspace/manager .
 USER 65532:65532
+
+EXPOSE 2112
 
 ENTRYPOINT ["/manager"]

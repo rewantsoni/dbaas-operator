@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"github.com/RHEcosystemAppEng/dbaas-operator/metrics"
 	"os"
 	"reflect"
 	"strings"
@@ -126,8 +127,10 @@ func (r *DBaaSPlatformReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 
 			if cr.DeletionTimestamp == nil {
 				status, err = reconciler.Reconcile(ctx, cr, nextStatus)
+				metrics.SetPlatformStatusMetric(logger, platform, status)
 			} else {
 				status, err = reconciler.Cleanup(ctx, cr)
+				metrics.CleanPlatformStatusMetric(logger, platform, status)
 			}
 
 			if err != nil {

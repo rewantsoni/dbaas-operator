@@ -18,6 +18,7 @@ package main
 
 import (
 	"flag"
+	"github.com/RHEcosystemAppEng/dbaas-operator/metrics"
 	"os"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -25,12 +26,15 @@ import (
 	"go.uber.org/zap/zapcore"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
+	"github.com/RHEcosystemAppEng/dbaas-operator/api/v1alpha1"
+	"github.com/RHEcosystemAppEng/dbaas-operator/controllers"
 	oauthzv1 "github.com/openshift/api/authorization/v1"
 	consolev1 "github.com/openshift/api/console/v1"
 	consolev1alpha1 "github.com/openshift/api/console/v1alpha1"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	oauthzclientv1 "github.com/openshift/client-go/authorization/clientset/versioned/typed/authorization/v1"
 	coreosv1 "github.com/operator-framework/api/pkg/operators/v1"
+	operatorframework "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -40,10 +44,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-
-	"github.com/RHEcosystemAppEng/dbaas-operator/api/v1alpha1"
-	"github.com/RHEcosystemAppEng/dbaas-operator/controllers"
-	operatorframework "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -79,6 +79,8 @@ func main() {
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
+
+	go metrics.Metrics()
 
 	var level zapcore.Level
 	if err := level.UnmarshalText([]byte(logLevel)); err != nil {
