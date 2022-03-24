@@ -2,11 +2,10 @@ package prometheus
 
 import (
 	"context"
-	"reflect"
-
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"reflect"
 
 	//ctrl "sigs.k8s.io/controller-runtime"
 	corev1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
@@ -68,10 +67,15 @@ func (r *Reconciler) Reconcile(ctx context.Context, cr *v1alpha1.DBaaSPlatform, 
 		return status, err
 	}
 
-	//status, err = r.reconcileDeployment(ctx)
-	//if status != v1alpha1.ResultSuccess {
-	//	return status, err
-	//}
+	status, err = r.reconcileDeployment(ctx)
+	if status != v1alpha1.ResultSuccess {
+		return status, err
+	}
+
+	status, err = r.reconcilePodMonitor(ctx)
+	if status != v1alpha1.ResultSuccess {
+		return status, err
+	}
 
 	return v1alpha1.ResultSuccess, nil
 }
@@ -163,7 +167,7 @@ func (r *Reconciler) reconcileSubscription(ctx context.Context) (v1alpha1.Platfo
 	// create
 	desired := NewSubscription()
 	if errors.IsNotFound(err) {
-		log.Info("Creating Grafana Operator Subscription")
+		log.Info("Creating Prometheus Operator Subscription")
 		err := r.client.Create(ctx, desired)
 		if err != nil {
 			return v1alpha1.ResultFailed, err
@@ -216,11 +220,11 @@ func NewSubscription() *corev1alpha1.Subscription {
 			Labels:    commonLabels(),
 		},
 		Spec: &corev1alpha1.SubscriptionSpec{
-			CatalogSource:          "",
-			CatalogSourceNamespace: "",
-			Package:                "dbass-operator",
+			CatalogSource:          "community-operators",
+			CatalogSourceNamespace: "openshift-marketplace",
+			Package:                "prometheus",
 			Channel:                "beta",
-			InstallPlanApproval:    corev1alpha1.ApprovalManual,
+			InstallPlanApproval:    corev1alpha1.ApprovalAutomatic,
 			StartingCSV:            prometheusCSV,
 			Config: &corev1alpha1.SubscriptionConfig{
 				Env: []corev1.EnvVar{
@@ -234,32 +238,75 @@ func NewSubscription() *corev1alpha1.Subscription {
 	}
 }
 
-// func (r *Reconciler) reconcileDeployment(ctx context.Context) (v1alpha1.PlatformsInstlnStatus, error) {
-// 	_, err := controllerutil.CreateOrUpdate(ctx, r.client, r.prometheus, func() error {
-// 		// if err := r.own(r.prometheus); err != nil {
-// 		// 	return err
-// 		// }
+func (r *Reconciler) reconcileDeployment(ctx context.Context) (v1alpha1.PlatformsInstlnStatus, error) {
+	r.log.Info("Reconciling Prometheus")
+	key := types.NamespacedName{
+		Name:      prometheusName,
+		Namespace: Namespace,
+	}
+	var prometheus promv1.Prometheus
+	err := r.client.Get(ctx, key, &prometheus)
+	if err != nil && !errors.IsNotFound(err) {
+		return v1alpha1.ResultFailed, err
+	}
 
-// 		desired := PrometheusTemplate.DeepCopy()
-// 		r.prometheus.Spec = desired.Spec
-// 		return nil
-// 	})
+	desired := PrometheusTemplate.DeepCopy()
+	if errors.IsNotFound(err) {
+		r.log.Info("Creating Prometheus")
+		err := r.client.Create(ctx, desired)
+		if err != nil {
+			return v1alpha1.ResultFailed, err
+		}
+		return v1alpha1.ResultInProgress, nil
+	}
 
-// 	if err != nil {
-// 		if errors.IsConflict(err) {
-// 			return v1alpha1.ResultInProgress, nil
-// 		}
-// 		return v1alpha1.ResultFailed, err
-// 	}
-// 	return v1alpha1.ResultSuccess, nil
-// }
+	// update
+	if !reflect.DeepEqual(prometheus.Spec, desired.Spec) {
+		r.log.Info("Updating Prom")
+		prometheus.Spec = desired.Spec
+		err := r.client.Update(ctx, &prometheus)
+		if err != nil {
+			return v1alpha1.ResultFailed, err
+		}
+	}
 
-// func (r *Reconciler) own(resource metav1.Object) error {
-//	 if err := ctrl.SetControllerReference(r.cr, resource, r.scheme); err != nil {
-//		 return err
-//	 }
-//	 return nil
-//  }
+	return v1alpha1.ResultSuccess, nil
+}
+
+func (r *Reconciler) reconcilePodMonitor(ctx context.Context) (v1alpha1.PlatformsInstlnStatus, error) {
+	r.log.Info("Reconciling Pod Monitor")
+	key := types.NamespacedName{
+		Name:      "dbaas-pod-monitor",
+		Namespace: Namespace,
+	}
+	var podMonitor promv1.PodMonitor
+	err := r.client.Get(ctx, key, &podMonitor)
+	if err != nil && !errors.IsNotFound(err) {
+		return v1alpha1.ResultFailed, err
+	}
+
+	desired := PodMonitorTemplate.DeepCopy()
+	if errors.IsNotFound(err) {
+		r.log.Info("Creating Pod Monitor")
+		err := r.client.Create(ctx, desired)
+		if err != nil {
+			return v1alpha1.ResultFailed, err
+		}
+		return v1alpha1.ResultInProgress, nil
+	}
+
+	// update
+	if !reflect.DeepEqual(podMonitor.Spec, desired.Spec) {
+		r.log.Info("Updating Prom")
+		podMonitor.Spec = desired.Spec
+		err := r.client.Update(ctx, &podMonitor)
+		if err != nil {
+			return v1alpha1.ResultFailed, err
+		}
+	}
+
+	return v1alpha1.ResultSuccess, nil
+}
 
 func NewNamespace() *corev1.Namespace {
 	return &corev1.Namespace{

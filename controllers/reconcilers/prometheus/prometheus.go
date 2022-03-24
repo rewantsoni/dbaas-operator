@@ -18,25 +18,38 @@ package prometheus
 
 import (
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // PrometheusTemplate is the template that serves as the base for the prometheus deployed by the operator
-// var resourceSelector = metav1.LabelSelector{
-// 	MatchLabels: map[string]string{
-// 		"app": "dbaas-operators",
-// 	},
-// }
+var resourceSelector = metav1.LabelSelector{
+	MatchLabels: map[string]string{
+		"app": "dbaas-prometheus",
+	},
+}
 
 var PrometheusTemplate = promv1.Prometheus{
-	ObjectMeta: v1.ObjectMeta{
-		Namespace: "openshift-dbaas-operator",
+	ObjectMeta: metav1.ObjectMeta{
+		Name:      "dbaas-operator-prometheus",
+		Namespace: "openshift-dbaas-prometheus",
 	},
 	Spec: promv1.PrometheusSpec{
-		ServiceAccountName: "dbaas-prometheus-operator",
-		// ServiceMonitorSelector: &resourceSelector,
-		// PodMonitorSelector:     &resourceSelector,
-		// RuleSelector:           &resourceSelector,
-		EnableAdminAPI: false,
+		ServiceAccountName:     "prometheus-k8s",
+		PodMonitorSelector:     &resourceSelector,
+		ServiceMonitorSelector: &resourceSelector,
+		EnableAdminAPI:         false,
+	},
+}
+
+var PodMonitorTemplate = promv1.PodMonitor{
+	ObjectMeta: metav1.ObjectMeta{
+		Name:      "dbaas-pod-monitor",
+		Namespace: "openshift-dbaas-prometheus",
+	},
+	Spec: promv1.PodMonitorSpec{
+		Selector: resourceSelector,
+		PodMetricsEndpoints: []promv1.PodMetricsEndpoint{
+			{Port: "8080", Path: "/metrics"},
+		},
 	},
 }

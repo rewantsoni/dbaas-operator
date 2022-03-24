@@ -9,7 +9,9 @@ rules:
   resources:
   - alertmanagerconfigs
   - alertmanagers
+  - podmonitors
   - prometheuses
+  - servicemonitors
   verbs:
   - create
   - delete

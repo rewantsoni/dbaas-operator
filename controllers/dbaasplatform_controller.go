@@ -91,11 +91,11 @@ type DBaaSPlatformReconciler struct {
 //+kubebuilder:rbac:groups=operator.openshift.io,resources=consoles,verbs=get;list;update;watch
 //+kubebuilder:rbac:groups="monitoring.coreos.com",resources={alertmanagers,prometheuses,alertmanagerconfigs},verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups="monitoring.coreos.com",resources=prometheusrules,verbs=get;list;watch;create;update;patch
-//+kubebuilder:rbac:groups="monitoring.coreos.com",resources=podmonitors,verbs=get;list;watch;update;patch
+//+kubebuilder:rbac:groups="monitoring.coreos.com",resources=podmonitors,verbs=get;list;watch;update;patch;create
 //+kubebuilder:rbac:groups="monitoring.coreos.com",resources=servicemonitors,verbs=get;list;watch;update;patch;create;delete
 //+kubebuilder:rbac:groups="",resources=namespaces,verbs=list;watch;create
 //+kubebuilder:rbac:groups=operators.coreos.com,resources=subscriptions;operatorgroups,verbs=list;watch;create;update,namespace=openshift-dbaas-prometheus
-//+kubebuilder:rbac:groups=monitoring.coreos.com,resources={alertmanagers,prometheuses,alertmanagerconfigs},verbs=list;watch;create;update;get;delete,namespace=openshift-dbaas-prometheus
+//+kubebuilder:rbac:groups=monitoring.coreos.com,resources={alertmanagers,prometheuses,alertmanagerconfigs,podmonitors,servicemonitors},verbs=list;watch;create;update;get;delete,namespace=openshift-dbaas-prometheus
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
