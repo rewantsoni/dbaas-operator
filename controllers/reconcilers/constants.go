@@ -40,7 +40,7 @@ const (
 	COCKROACHDB_CHANNEL     = "alpha"
 
 	// DBAAS_DYNAMIC_PLUGIN
-	DBAAS_DYNAMIC_PLUGIN_IMG          = "quay.io/ecosystem-appeng/dbaas-dynamic-plugin:0.1.5"
+	DBAAS_DYNAMIC_PLUGIN_IMG          = "quay.io/ecosystem-appeng/dbaas-dynamic-plugin:0.1.4"
 	DBAAS_DYNAMIC_PLUGIN_NAME         = "dbaas-dynamic-plugin"
 	DBAAS_DYNAMIC_PLUGIN_DISPLAY_NAME = "OpenShift Database as a Service Dynamic Plugin"
 
@@ -101,5 +101,8 @@ var InstallationPlatforms = map[dbaasv1alpha1.PlatformsName]dbaasv1alpha1.Platfo
 	},
 	dbaasv1alpha1.PrometheusInstallation: {
 		Type: dbaasv1alpha1.TypePrometheusInstallation,
+	},
+	dbaasv1alpha1.GrafanaInstallation: {
+		Type: dbaasv1alpha1.TypeGrafanaInstallation,
 	},
 }

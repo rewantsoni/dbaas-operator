@@ -33,6 +33,7 @@ const (
 	CockroachDBInstallation            PlatformsName = "cockroachdb-cloud"
 	DBaaSQuickStartInstallation        PlatformsName = "dbaas-quick-starts"
 	PrometheusInstallation             PlatformsName = "prometheus"
+	GrafanaInstallation                PlatformsName = "grafana"
 )
 
 const (
@@ -40,6 +41,7 @@ const (
 	TypeConsolePlugin
 	TypeProvider
 	TypePrometheusInstallation
+	TypeGrafanaInstallation
 )
 
 const (

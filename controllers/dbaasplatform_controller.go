@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"github.com/RHEcosystemAppEng/dbaas-operator/controllers/reconcilers/grafana"
 	"os"
 	"reflect"
 	"strings"
@@ -94,8 +95,8 @@ type DBaaSPlatformReconciler struct {
 //+kubebuilder:rbac:groups="monitoring.coreos.com",resources=podmonitors,verbs=get;list;watch;update;patch;create
 //+kubebuilder:rbac:groups="monitoring.coreos.com",resources=servicemonitors,verbs=get;list;watch;update;patch;create;delete
 //+kubebuilder:rbac:groups="",resources=namespaces,verbs=list;watch;create
-//+kubebuilder:rbac:groups=operators.coreos.com,resources=subscriptions;operatorgroups,verbs=list;watch;create;update,namespace=openshift-dbaas-prometheus
-//+kubebuilder:rbac:groups=monitoring.coreos.com,resources={alertmanagers,prometheuses,alertmanagerconfigs,podmonitors,servicemonitors},verbs=list;watch;create;update;get;delete,namespace=openshift-dbaas-prometheus
+//+kubebuilder:rbac:groups=operators.coreos.com,resources=subscriptions;operatorgroups,verbs=list;watch;create;update,namespace=openshift-dbaas-monitoring
+//+kubebuilder:rbac:groups=monitoring.coreos.com,resources={alertmanagers,prometheuses,alertmanagerconfigs,podmonitors,servicemonitors},verbs=list;watch;create;update;get;delete,namespace=openshift-dbaas-monitoring
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -259,6 +260,8 @@ func (r *DBaaSPlatformReconciler) getReconcilerForPlatform(platformConfig dbaasv
 		return quickstart_installation.NewReconciler(r.Client, r.Scheme, r.Log)
 	case dbaasv1alpha1.TypePrometheusInstallation:
 		return prometheus.NewReconciler(r.cr, r.Client, r.Scheme, r.Log)
+	case dbaasv1alpha1.TypeGrafanaInstallation:
+		return grafana.NewReconciler(r.Client, r.Log)
 	}
 
 	return nil

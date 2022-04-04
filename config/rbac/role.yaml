@@ -232,7 +232,7 @@ kind: Role
 metadata:
   creationTimestamp: null
   name: manager-role
-  namespace: openshift-dbaas-prometheus
+  namespace: openshift-dbaas-monitoring
 rules:
 - apiGroups:
   - monitoring.coreos.com

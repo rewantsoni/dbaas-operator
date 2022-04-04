@@ -1,52 +1,41 @@
-package prometheus
+package grafana
 
 import (
 	"context"
-	"reflect"
-
-	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-
-	corev1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
 	"github.com/RHEcosystemAppEng/dbaas-operator/api/v1alpha1"
 	"github.com/RHEcosystemAppEng/dbaas-operator/controllers/reconcilers"
 	"github.com/go-logr/logr"
 	operatorsv1 "github.com/operator-framework/api/pkg/operators/v1"
-	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	corev1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"reflect"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
-	namespace      = "openshift-dbaas-monitoring"
-	operatorGroup  = "dbaas-monitoring"
-	prometheusName = "dbaas-prometheus-operator"
-	prometheusCSV  = "prometheusoperator.0.47.0"
-	managedBy      = "app.kubernetes.io/managed-by"
-	operatorName   = "dbaas-operator"
-	serviceMonitor = "dbaas-service-monitor"
+	namespace     = "openshift-dbaas-monitoring"
+	operatorGroup = "dbaas-monitoring"
+	grafanaName   = "dbaas-grafana-operator"
+	grafanaCSV    = "grafana-operator.v4.2.0"
+	managedBy     = "app.kubernetes.io/managed-by"
+	operatorName  = "dbaas-operator"
 )
 
 type Reconciler struct {
-	client     client.Client
-	prometheus *promv1.Prometheus
-	cr         *v1alpha1.DBaaSPlatform
-	scheme     *runtime.Scheme
-	log        logr.Logger
+	client client.Client
+	log    logr.Logger
 }
 
-func NewReconciler(cr *v1alpha1.DBaaSPlatform, client client.Client, scheme *runtime.Scheme, log logr.Logger) reconcilers.PlatformReconciler {
+func NewReconciler(client client.Client, log logr.Logger) reconcilers.PlatformReconciler {
 	return &Reconciler{
-		client:     client,
-		prometheus: &promv1.Prometheus{},
-		cr:         cr,
-		scheme:     scheme,
-		log:        log,
+		client: client,
+		log:    log,
 	}
 }
+
 func (r *Reconciler) Reconcile(ctx context.Context, cr *v1alpha1.DBaaSPlatform, status2 *v1alpha1.DBaaSPlatformStatus) (v1alpha1.PlatformsInstlnStatus, error) {
 
 	status, err := r.reconcileNamespace(ctx)
@@ -64,23 +53,18 @@ func (r *Reconciler) Reconcile(ctx context.Context, cr *v1alpha1.DBaaSPlatform, 
 		return status, err
 	}
 
-	status, err = r.reconcilePrometheus(ctx)
-	if status != v1alpha1.ResultSuccess {
-		return status, err
-	}
-
-	status, err = r.reconcileServiceMonitor(ctx)
-	if status != v1alpha1.ResultSuccess {
-		return status, err
-	}
-
 	return v1alpha1.ResultSuccess, nil
 }
 
 func (r *Reconciler) Cleanup(ctx context.Context, cr *v1alpha1.DBaaSPlatform) (v1alpha1.PlatformsInstlnStatus, error) {
 
-	deployment := r.prometheus
-	err := r.client.Delete(ctx, deployment)
+	subscription := &corev1alpha1.Subscription{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      grafanaName,
+			Namespace: namespace,
+		},
+	}
+	err := r.client.Delete(ctx, subscription)
 	if err != nil && !errors.IsNotFound(err) {
 		return v1alpha1.ResultFailed, err
 	}
@@ -114,7 +98,7 @@ func (r *Reconciler) reconcileNamespace(ctx context.Context) (v1alpha1.Platforms
 }
 
 func (r *Reconciler) reconcileOperatorGroup(ctx context.Context) (v1alpha1.PlatformsInstlnStatus, error) {
-	log := r.log.WithValues("Name", prometheusName)
+	log := r.log.WithValues("Name", grafanaName)
 	log.V(6).Info("Reconciling OperatorGroup")
 
 	key := types.NamespacedName{
@@ -150,9 +134,9 @@ func (r *Reconciler) reconcileOperatorGroup(ctx context.Context) (v1alpha1.Platf
 }
 
 func (r *Reconciler) reconcileSubscription(ctx context.Context) (v1alpha1.PlatformsInstlnStatus, error) {
-	log := r.log.WithValues("Name", prometheusName)
+	log := r.log.WithValues("Name", grafanaName)
 	key := types.NamespacedName{
-		Name:      prometheusName,
+		Name:      grafanaName,
 		Namespace: namespace,
 	}
 	var subscription corev1alpha1.Subscription
@@ -164,7 +148,7 @@ func (r *Reconciler) reconcileSubscription(ctx context.Context) (v1alpha1.Platfo
 	// create
 	desired := newSubscription()
 	if errors.IsNotFound(err) {
-		log.Info("Creating Prometheus Operator Subscription")
+		log.Info("Creating Grafana Operator Subscription")
 		err := r.client.Create(ctx, desired)
 		if err != nil {
 			return v1alpha1.ResultFailed, err
@@ -205,106 +189,6 @@ func (r *Reconciler) reconcileSubscription(ctx context.Context) (v1alpha1.Platfo
 	return v1alpha1.ResultSuccess, nil
 }
 
-func (r *Reconciler) reconcilePrometheus(ctx context.Context) (v1alpha1.PlatformsInstlnStatus, error) {
-	r.log.Info("Reconciling Prometheus")
-	key := types.NamespacedName{
-		Name:      prometheusName,
-		Namespace: namespace,
-	}
-	var prometheus promv1.Prometheus
-	err := r.client.Get(ctx, key, &prometheus)
-	if err != nil && !errors.IsNotFound(err) {
-		return v1alpha1.ResultFailed, err
-	}
-
-	desired := PrometheusTemplate.DeepCopy()
-	if errors.IsNotFound(err) {
-		r.log.Info("Creating Prometheus")
-		err := r.client.Create(ctx, desired)
-		if err != nil {
-			return v1alpha1.ResultFailed, err
-		}
-		return v1alpha1.ResultInProgress, nil
-	}
-
-	// update
-	if !reflect.DeepEqual(prometheus.Spec, desired.Spec) {
-		r.log.Info("Updating Prometheus")
-		prometheus.Spec = desired.Spec
-		err := r.client.Update(ctx, &prometheus)
-		if err != nil {
-			return v1alpha1.ResultFailed, err
-		}
-	}
-
-	return v1alpha1.ResultSuccess, nil
-}
-
-func (r *Reconciler) reconcileServiceMonitor(ctx context.Context) (v1alpha1.PlatformsInstlnStatus, error) {
-	r.log.Info("Reconciling Service Monitor")
-	key := types.NamespacedName{
-		Name:      serviceMonitor,
-		Namespace: namespace,
-	}
-	var serviceMonitor promv1.ServiceMonitor
-	err := r.client.Get(ctx, key, &serviceMonitor)
-	if err != nil && !errors.IsNotFound(err) {
-		return v1alpha1.ResultFailed, err
-	}
-
-	desired := ServiceMonitorTemplate.DeepCopy()
-	if errors.IsNotFound(err) {
-		r.log.Info("Creating Service Monitor")
-		err := r.client.Create(ctx, desired)
-		if err != nil {
-			return v1alpha1.ResultFailed, err
-		}
-		return v1alpha1.ResultInProgress, nil
-	}
-
-	// update
-	if !reflect.DeepEqual(serviceMonitor.Spec, desired.Spec) {
-		r.log.Info("Updating Service Monitor")
-		serviceMonitor.Spec = desired.Spec
-		err := r.client.Update(ctx, &serviceMonitor)
-		if err != nil {
-			return v1alpha1.ResultFailed, err
-		}
-	}
-
-	return v1alpha1.ResultSuccess, nil
-}
-
-func newSubscription() *corev1alpha1.Subscription {
-	return &corev1alpha1.Subscription{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: corev1alpha1.SchemeGroupVersion.String(),
-			Kind:       "Subscription",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      prometheusName,
-			Namespace: namespace,
-			Labels:    commonLabels(),
-		},
-		Spec: &corev1alpha1.SubscriptionSpec{
-			CatalogSource:          "community-operators",
-			CatalogSourceNamespace: "openshift-marketplace",
-			Package:                "prometheus",
-			Channel:                "beta",
-			InstallPlanApproval:    corev1alpha1.ApprovalAutomatic,
-			StartingCSV:            prometheusCSV,
-			Config: &corev1alpha1.SubscriptionConfig{
-				Env: []corev1.EnvVar{
-					{
-						Name:  "DASHBOARD_NAMESPACES_ALL",
-						Value: "true",
-					},
-				},
-			},
-		},
-	}
-}
-
 func newNamespace() *corev1.Namespace {
 	return &corev1.Namespace{
 		TypeMeta: metav1.TypeMeta{
@@ -314,6 +198,36 @@ func newNamespace() *corev1.Namespace {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   namespace,
 			Labels: commonLabels(),
+		},
+	}
+}
+
+func newSubscription() *corev1alpha1.Subscription {
+	return &corev1alpha1.Subscription{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: corev1alpha1.SchemeGroupVersion.String(),
+			Kind:       "Subscription",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      grafanaName,
+			Namespace: namespace,
+			Labels:    commonLabels(),
+		},
+		Spec: &corev1alpha1.SubscriptionSpec{
+			CatalogSource:          "community-operators",
+			CatalogSourceNamespace: "openshift-marketplace",
+			Package:                "grafana-operator",
+			Channel:                "v4",
+			InstallPlanApproval:    corev1alpha1.ApprovalAutomatic,
+			StartingCSV:            grafanaCSV,
+			Config: &corev1alpha1.SubscriptionConfig{
+				Env: []corev1.EnvVar{
+					{
+						Name:  "DASHBOARD_NAMESPACES_ALL",
+						Value: "true",
+					},
+				},
+			},
 		},
 	}
 }
