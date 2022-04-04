@@ -2,6 +2,7 @@ package collectors
 
 import (
 	"context"
+	"k8s.io/klog/v2"
 	"strings"
 
 	"github.com/RHEcosystemAppEng/dbaas-operator/metrics/internal/options"
@@ -11,7 +12,6 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-	"k8s.io/klog"
 )
 
 var _ prometheus.Collector = &DbaasPlatformStoreCollector{}
