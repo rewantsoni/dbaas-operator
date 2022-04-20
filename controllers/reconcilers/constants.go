@@ -39,6 +39,14 @@ const (
 	COCKROACHDB_PKG         = "ccapi-k8s-operator"
 	COCKROACHDB_CHANNEL     = "alpha"
 
+	MONITORING_STACK_CSV         = "monitoring-stack-operator.v0.0.6"
+	MONITORING_STACK_CATALOG_IMG = "quay.io/resoni/monitoring-stack-operator-catalog:latest"
+	MONITORING_STACK_NAME        = "monitoring-stack"
+	MONITORING_STACK_DISPLAYNAME = "Monitoring Stack Operator"
+	MONITORING_STACK_DEPLOYMENT  = "monitoring-stack-operator"
+	MONITORING_STACK_PKG         = "monitoring-stack-operator"
+	MONITORING_STACK_CHANNEL     = "development"
+
 	// DBAAS_DYNAMIC_PLUGIN
 	DBAAS_DYNAMIC_PLUGIN_IMG          = "quay.io/ecosystem-appeng/dbaas-dynamic-plugin:0.2.0"
 	DBAAS_DYNAMIC_PLUGIN_NAME         = "dbaas-dynamic-plugin"
@@ -98,5 +106,15 @@ var InstallationPlatforms = map[dbaasv1alpha1.PlatformsName]dbaasv1alpha1.Platfo
 	},
 	dbaasv1alpha1.DBaaSQuickStartInstallation: {
 		Type: dbaasv1alpha1.TypeQuickStart,
+	},
+	dbaasv1alpha1.DBaaSMonitoringStackInstallation: {
+		Name:           MONITORING_STACK_NAME,
+		CSV:            MONITORING_STACK_CSV,
+		DeploymentName: MONITORING_STACK_DEPLOYMENT,
+		Image:          MONITORING_STACK_CATALOG_IMG,
+		PackageName:    MONITORING_STACK_PKG,
+		Channel:        MONITORING_STACK_CHANNEL,
+		DisplayName:    MONITORING_STACK_DISPLAYNAME,
+		Type:           dbaasv1alpha1.TypeProvider,
 	},
 }
